@@ -123,7 +123,7 @@ export function createApp(config: ServerConfig): express.Application {
   const resourceMetadataUrl = new URL("/.well-known/oauth-protected-resource", config.issuerUrl).toString();
   const bearerAuth = requireBearerAuth({ verifier: provider, resourceMetadataUrl });
 
-  app.post("/mcp", bearerAuth, async (req, res) => {
+  app.post("/", bearerAuth, async (req, res) => {
     const sessionId = randomUUID();
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => sessionId,
@@ -136,14 +136,14 @@ export function createApp(config: ServerConfig): express.Application {
     await transport.handleRequest(req, res, req.body);
   });
 
-  app.get("/mcp", bearerAuth, async (req, res) => {
+  app.get("/", bearerAuth, async (req, res) => {
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
     const mcpServer = buildMcpServer(config.tools);
     await mcpServer.connect(transport);
     await transport.handleRequest(req, res);
   });
 
-  app.delete("/mcp", bearerAuth, async (req, res) => {
+  app.delete("/", bearerAuth, async (req, res) => {
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
     const mcpServer = buildMcpServer(config.tools);
     await mcpServer.connect(transport);

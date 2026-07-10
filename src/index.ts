@@ -16,7 +16,7 @@ let httpServer: Server;
 function startServer(): void {
   httpServer = app.listen(env.PORT, () => {
     logger.info({ port: env.PORT, url: BASE_URL, env: env.NODE_ENV }, "server:started");
-    logger.info({ url: `${BASE_URL}/mcp` }, "mcp:endpoint");
+    logger.info({ url: BASE_URL }, "mcp:endpoint");
     logger.info({ url: `${BASE_URL}/.well-known/oauth-authorization-server` }, "oauth:metadata");
   });
 
