@@ -44,7 +44,15 @@ export function createApp(config: ServerConfig): express.Application {
 
   // ── HTTP request logging ───────────────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const httpLoggerMiddleware = (pinoHttp.default ?? (pinoHttp as any))({ logger }) as express.RequestHandler;
+  const httpLoggerMiddleware = (pinoHttp.default ?? (pinoHttp as any))({
+    logger,
+    customSuccessMessage: (req, res) => `${req.method} ${req.url} ${res.statusCode}`,
+    customErrorMessage: (req, res) => `${req.method} ${req.url} ${res.statusCode}`,
+    serializers: {
+      req: (req) => ({ method: req.method, url: req.url, ip: req.remoteAddress }),
+      res: (res) => ({ status: res.statusCode }),
+    },
+  }) as express.RequestHandler;
   app.use(httpLoggerMiddleware);
 
   // ── Body parsing ───────────────────────────────────────────────────────────
