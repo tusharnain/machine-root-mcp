@@ -10,7 +10,7 @@ const Schema = z.object({
 
 function run(command: string, cwd: string, timeoutMs: number): Promise<{ stdout: string; stderr: string; code: number }> {
   return new Promise((resolve) => {
-    const proc = spawn("bash", ["-c", command], { cwd });
+    const proc = spawn("/bin/bash", ["-c", command], { cwd });
     let stdout = "";
     let stderr = "";
 
@@ -21,6 +21,11 @@ function run(command: string, cwd: string, timeoutMs: number): Promise<{ stdout:
       proc.kill("SIGTERM");
       resolve({ stdout, stderr: stderr + `\n[killed: ${timeoutMs / 1000}s timeout]`, code: -1 });
     }, timeoutMs);
+
+    proc.on("error", (err) => {
+      clearTimeout(timer);
+      resolve({ stdout, stderr: `spawn error: ${err.message}`, code: -1 });
+    });
 
     proc.on("close", (code) => {
       clearTimeout(timer);
