@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Local MCP server for workspace project tooling",
   "scripts": {
+    "postinstall": "cd node_modules/better-sqlite3 && node_modules/.bin/prebuild-install || true",
     "dev": "tsc && node --env-file=.env --watch dist/index.js",
     "dev:build": "tsc --watch --preserveWatchOutput",
     "build": "tsc",
