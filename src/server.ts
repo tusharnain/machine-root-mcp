@@ -119,17 +119,37 @@ export function createApp(config: ServerConfig): express.Application {
     res.redirect(redirectUrl.toString());
   });
 
+  // ── MCP sessions ──────────────────────────────────────────────────────────
+  const sessions = new Map<string, StreamableHTTPServerTransport>();
+
   // ── MCP endpoint (Bearer-protected) ───────────────────────────────────────
   const resourceMetadataUrl = new URL("/.well-known/oauth-protected-resource", config.issuerUrl).toString();
   const bearerAuth = requireBearerAuth({ verifier: provider, resourceMetadataUrl });
 
   app.post("/", bearerAuth, async (req, res) => {
-    const sessionId = randomUUID();
+    const existingId = req.headers["mcp-session-id"] as string | undefined;
+
+    if (existingId) {
+      const transport = sessions.get(existingId);
+      if (!transport) { res.status(404).json({ error: "session not found" }); return; }
+      await transport.handleRequest(req, res, req.body);
+      return;
+    }
+
+    // New session
+    let sessionId: string;
     const transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: () => sessionId,
-      onsessioninitialized: (id) => logger.info({ sessionId: id, clientId: req.auth?.clientId }, "mcp:session started"),
+      sessionIdGenerator: () => randomUUID(),
+      onsessioninitialized: (id) => {
+        sessionId = id;
+        sessions.set(id, transport);
+        logger.info({ sessionId: id, clientId: req.auth?.clientId }, "mcp:session started");
+      },
     });
-    transport.onclose = () => logger.info({ sessionId }, "mcp:session closed");
+    transport.onclose = () => {
+      sessions.delete(sessionId);
+      logger.info({ sessionId }, "mcp:session closed");
+    };
 
     const mcpServer = buildMcpServer(config.tools);
     await mcpServer.connect(transport);
@@ -137,17 +157,20 @@ export function createApp(config: ServerConfig): express.Application {
   });
 
   app.get("/", bearerAuth, async (req, res) => {
-    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
-    const mcpServer = buildMcpServer(config.tools);
-    await mcpServer.connect(transport);
+    const sessionId = req.headers["mcp-session-id"] as string | undefined;
+    if (!sessionId) { res.status(400).json({ error: "missing mcp-session-id" }); return; }
+    const transport = sessions.get(sessionId);
+    if (!transport) { res.status(404).json({ error: "session not found" }); return; }
     await transport.handleRequest(req, res);
   });
 
   app.delete("/", bearerAuth, async (req, res) => {
-    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
-    const mcpServer = buildMcpServer(config.tools);
-    await mcpServer.connect(transport);
+    const sessionId = req.headers["mcp-session-id"] as string | undefined;
+    if (!sessionId) { res.status(400).json({ error: "missing mcp-session-id" }); return; }
+    const transport = sessions.get(sessionId);
+    if (!transport) { res.status(404).json({ error: "session not found" }); return; }
     await transport.handleRequest(req, res);
+    sessions.delete(sessionId);
   });
 
   return app;
