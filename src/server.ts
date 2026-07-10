@@ -6,7 +6,9 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { mcpAuthRouter } from "@modelcontextprotocol/sdk/server/auth/router.js";
 import { requireBearerAuth } from "@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js";
 import { LocalOAuthProvider } from "./auth/provider.js";
+import { renderConsentPage } from "./auth/consent-page.js";
 import { logger } from "./logger.js";
+import { env } from "./config.js";
 import type { Tool } from "./types.js";
 
 export interface ServerConfig {
@@ -64,7 +66,7 @@ export function createApp(config: ServerConfig): express.Application {
 
   // ── Consent decision ───────────────────────────────────────────────────────
   app.post("/authorize/decision", (req, res) => {
-    const { decision, client_id, redirect_uri, state, code_challenge, scopes, resource } =
+    const { decision, client_id, redirect_uri, state, code_challenge, scopes, resource, passkey } =
       req.body as Record<string, string>;
 
     const redirectUrl = new URL(redirect_uri ?? "");
@@ -74,6 +76,23 @@ export function createApp(config: ServerConfig): express.Application {
       redirectUrl.searchParams.set("error", "access_denied");
       if (state) redirectUrl.searchParams.set("state", state);
       res.redirect(redirectUrl.toString());
+      return;
+    }
+
+    if (passkey !== env.CONSENT_PASSKEY) {
+      logger.warn({ clientId: client_id }, "oauth:consent wrong passkey");
+      const client = provider.clientsStore.getClient(client_id ?? "") as { client_name?: string } | undefined;
+      res.status(403).send(renderConsentPage({
+        clientId: client_id ?? "",
+        clientName: (client?.client_name as string | undefined) ?? client_id ?? "",
+        scopes: scopes ? scopes.split(" ").filter(Boolean) : [],
+        redirectUri: redirect_uri ?? "",
+        state: state ?? "",
+        codeChallenge: code_challenge ?? "",
+        codeChallengeMethod: "S256",
+        resource: resource ?? "",
+        error: "Wrong passkey. Try again.",
+      }));
       return;
     }
 

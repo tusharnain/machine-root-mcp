@@ -7,6 +7,7 @@ export interface ConsentPageParams {
   codeChallenge: string;
   codeChallengeMethod: string;
   resource: string;
+  error?: string;
 }
 
 export function renderConsentPage(params: ConsentPageParams): string {
@@ -69,6 +70,14 @@ export function renderConsentPage(params: ConsentPageParams): string {
     .allow:hover { background: #4338ca; }
     .deny { background: #f1f1f1; color: #333; }
     .deny:hover { background: #e5e5e5; }
+    .passkey-wrap { margin-bottom: 1.25rem; }
+    .passkey-wrap label { display: block; font-size: 0.85rem; font-weight: 500; color: #444; margin-bottom: 0.4rem; }
+    .passkey-wrap input {
+      width: 100%; padding: 0.6rem 0.75rem; border: 1px solid #ddd;
+      border-radius: 8px; font-size: 0.95rem; outline: none;
+    }
+    .passkey-wrap input:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
+    .error { background: #fff0f0; color: #c0392b; border: 1px solid #f5c6cb; border-radius: 8px; padding: 0.6rem 0.75rem; font-size: 0.875rem; margin-bottom: 1.25rem; }
   </style>
 </head>
 <body>
@@ -80,6 +89,8 @@ export function renderConsentPage(params: ConsentPageParams): string {
     </p>
     <ul class="scopes">${scopeList}</ul>
 
+    ${params.error ? `<div class="error">${escapeHtml(params.error)}</div>` : ""}
+
     <form method="POST" action="/authorize/decision">
       ${hidden("client_id", params.clientId)}
       ${hidden("redirect_uri", params.redirectUri)}
@@ -88,6 +99,10 @@ export function renderConsentPage(params: ConsentPageParams): string {
       ${hidden("code_challenge_method", params.codeChallengeMethod)}
       ${hidden("scopes", params.scopes.join(" "))}
       ${hidden("resource", params.resource)}
+      <div class="passkey-wrap">
+        <label for="passkey">Passkey</label>
+        <input type="password" id="passkey" name="passkey" placeholder="Enter your passkey" autocomplete="current-password" required>
+      </div>
       <div class="actions">
         <button type="submit" name="decision" value="allow" class="allow">Allow</button>
         <button type="submit" name="decision" value="deny" class="deny">Deny</button>

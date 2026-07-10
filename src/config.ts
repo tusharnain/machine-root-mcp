@@ -5,7 +5,8 @@ const EnvSchema = z.object({
   BASE_URL:    z.string().optional(),
   MCP_DB_PATH: z.string().default("./data/local-mcp.db"),
   LOG_LEVEL:   z.enum(["trace", "debug", "info", "warn", "error", "fatal"]).default("info"),
-  NODE_ENV:    z.enum(["development", "production", "test"]).default("development"),
+  NODE_ENV:        z.enum(["development", "production", "test"]).default("development"),
+  CONSENT_PASSKEY: z.string().min(1, "CONSENT_PASSKEY must not be empty"),
 });
 
 const parsed = EnvSchema.safeParse(process.env);
